@@ -1,0 +1,3 @@
+[submodule "avr-api"]
+	path = avr-api
+	url = https://github.com/niktob560/avr-api
