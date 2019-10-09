@@ -5,10 +5,14 @@
 #define ACW         0
 
 
+#define USART_SPD   115200
+
+
 #define M0_DPIN     18
 #define M0_SPIN     0
 #define M0_INVERT   0
 #define M0_TICKS    0
+//step0 on OC2B
 
 #define M1_DPIN     21
 #define M1_SPIN     0
@@ -70,7 +74,14 @@ Motor   motor0,
 
 void m0BeginTick(void)
 {
+    TIMER2Init(TIMER2_COMB_TOGGLE, TIMER2_WF_CTC, TIMER2_CLK_SRC_1024);
 
+    TIMER2SetA(255);
+}
+
+void m0StopTick(void)
+{
+    TIMER2Flush();
 }
 
 void m0CheckTick(void)
@@ -78,9 +89,18 @@ void m0CheckTick(void)
 
 }
 
+
+
 void m1BeginTick(void)
 {
+    TIMER0Init(TIMER0_COMB_NPWM_TOGGLE, TIMER0_WF_CTC, TIMER0_CLK_SRC_1024);
 
+    TIMER0SetA(255);
+}
+
+void m1StopTick(void)
+{
+    TIMER0Flush();
 }
 
 void m1CheckTick(void)
@@ -88,9 +108,18 @@ void m1CheckTick(void)
 
 }
 
+
+
 void m2BeginTick(void)
 {
+    TIMER1Init(TIMER1_COMB_TOGGLE, TIMER1_WF_CTC_TOPOCR1A, TIMER1_CLK_SRC_1024);
 
+    TIMER1SetA(255);
+}
+
+void m2StopTick(void)
+{
+    TIMER1Flush();
 }
 
 void m2CheckTick(void)
@@ -103,32 +132,50 @@ void m2CheckTick(void)
 
 
 
+
 int main(void)
 {
-    USART0Begin(115200);
-    motor0.setDpin(M0_DPIN);
-    motor1.setDpin(M1_DPIN);
-    motor2.setDpin(M2_DPIN);
+    DDRD = 0xFF;
+    //start USART at standart speed
+    USART0Begin(USART_SPD);
+    USART0Println("STARTED");
+    //
+    // //set direction pins for motors
+    // motor0.setDpin(M0_DPIN);
+    // motor1.setDpin(M1_DPIN);
+    // motor2.setDpin(M2_DPIN);
+    //
+    // //set inversion for motors
+    // motor0.setInverted(M0_INVERT);
+    // motor1.setInverted(M1_INVERT);
+    // motor2.setInverted(M2_INVERT);
 
-    motor0.setInverted(M0_INVERT);
-    motor1.setInverted(M1_INVERT);
-    motor2.setInverted(M2_INVERT);
+    m0BeginTick();
+    m1BeginTick();
+    m2BeginTick();
+    m3BeginTick();
 
 
+    // const int del = 40;
     loop:
-
-    motor0.setDir(CW);
-    motor1.setDir(CW);
-    motor2.setDir(CW);
-
-    delay(600);
-
-    motor0.setDir(ACW);
-    motor1.setDir(ACW);
-    motor2.setDir(ACW);
-
-    delay(600);
-
+    //
+    // // motor0.setDir(CW);
+    // // motor1.setDir(CW);
+    // // motor2.setDir(CW);
+    // //
+    // // delay(600);
+    // //
+    // // motor0.setDir(ACW);
+    // // motor1.setDir(ACW);
+    // // motor2.setDir(ACW);
+    // //
+    // // delay(600)
+    // // for(uint8_t i = 0; i < 0xFF; i++)
+    // //     asm("NOP");
+    // _delay_us(del);
+    // PORTD = 0;
+    // _delay_us(del);
+    // PORTD = 0xFF;
 
     goto loop;//because "true" cycles is for plebs
     return 0;
