@@ -25,58 +25,41 @@
 #define M2_TICKS    0
 
 
-class Motor
-{
-private:
-    uint8_t         dpin,
-                    spin,
-                    inverted = 0,
-                    paused = 0;
-    uint16_t        ticksPerCycle;
 
-    uint64_t        ticksRemained = 0;
-
-    void            (*startTicking)(void) = NULL;
-
-    void begin(void)
-    {
-        if(startTicking != NULL)
-            startTicking();
-    }
-
-public:
-    Motor(){}
-    Motor(uint16_t ticksPerCycle, uint8_t dpin, uint8_t spin, void (*func)(void));
-    void beginMoving(uint64_t ticks, DIR_TYPE dir);
-    void pause(void);
-    void unpause(void);
-    void stop(void);
-    void setDir(DIR_TYPE dir);
-    DIR_TYPE getDir(void);
-    void setDpin(uint8_t pin);
-    void setSpin(uint8_t pin);
-    void setTicksPerCycle(uint16_t ticks);
-    void setTickingFunc(void (*func)(void));
-    void setInverted(uint8_t state);
-};
-
+uint64_t    m0TicksRemained = 0,
+            m1TicksRemained = 0,
+            m2TicksRemained = 0;
+uint8_t     m0Paused        = 0,
+            m1Paused        = 0,
+            m2Paused        = 0;
+uint8_t     m0Dir           = 0,
+            m1Dir           = 0,
+            m2Dir           = 0;
+uint8_t     m0Spd           = 18,
+            m1Spd           = 18,
+            m2Spd           = 18;
+uint8_t     m0Prescaller    = TIMER2_CLK_SRC_1024,
+            m1Prescaller    = TIMER0_CLK_SRC_1024,
+            m2Prescaller    = TIMER1_CLK_SRC_1024;
+            
 
 
 void m0BeginTick(void);
 void m1BeginTick(void);
 void m2BeginTick(void);
+void m0Tick(void);
+void m1Tick(void);
+void m2Tick(void);
 
-
-
-Motor   motor0,
-        motor1,
-        motor2;
 
 void m0BeginTick(void)
 {
-    TIMER2Init(TIMER2_COMB_TOGGLE, TIMER2_WF_CTC, TIMER2_CLK_SRC_1024);
-
-    TIMER2SetA(255);
+    cli();
+    TIMER2Init(TIMER2_COMB_TOGGLE, TIMER2_WF_CTC, m0Prescaller);
+    TIMER2EnableCOMPBInterrupt();
+    setCustomFunc(INTERRUPT_CUSTOMFUNC_TC2_COMPB, m0Tick);
+    TIMER2SetA(m0Spd);
+    sei();
 }
 
 void m0StopTick(void)
@@ -84,18 +67,24 @@ void m0StopTick(void)
     TIMER2Flush();
 }
 
-void m0CheckTick(void)
+void m0Tick(void)
 {
-
+    if(m0TicksRemained == 0)
+        m0StopTick();
+    else
+        m0TicksRemained--;
 }
 
 
 
 void m1BeginTick(void)
 {
-    TIMER0Init(TIMER0_COMB_NPWM_TOGGLE, TIMER0_WF_CTC, TIMER0_CLK_SRC_1024);
-
-    TIMER0SetA(255);
+    cli();
+    TIMER0Init(TIMER0_COMA_NPWM_TOGGLE, TIMER0_WF_CTC, m1Prescaller);
+    TIMER0EnableCOMPAInterrupt();
+    setCustomFunc(INTERRUPT_CUSTOMFUNC_TC0_COMPA, m1Tick);
+    TIMER0SetA(m1Spd);
+    sei();
 }
 
 void m1StopTick(void)
@@ -103,18 +92,25 @@ void m1StopTick(void)
     TIMER0Flush();
 }
 
-void m1CheckTick(void)
+void m1Tick(void)
 {
-
+    if(m1TicksRemained == 0)
+        m1StopTick();
+    else
+        m1TicksRemained--;
 }
 
 
 
 void m2BeginTick(void)
 {
-    TIMER1Init(TIMER1_COMB_TOGGLE, TIMER1_WF_CTC_TOPOCR1A, TIMER1_CLK_SRC_1024);
-
-    TIMER1SetA(255);
+    cli();
+                                //FPWM because fuck you Atmel!
+    TIMER1Init(TIMER1_COMA_TOGGLE, TIMER1_WF_FPWM_TOPOCR1A, m2Prescaller);
+    TIMER1EnableCOMPAInterrupt();
+    setCustomFunc(INTERRUPT_CUSTOMFUNC_TC1_COMPA, m2Tick);
+    TIMER1SetA((m2Spd * 0xFFFF) / 0xFF);
+    sei();
 }
 
 void m2StopTick(void)
@@ -122,12 +118,14 @@ void m2StopTick(void)
     TIMER1Flush();
 }
 
-void m2CheckTick(void)
+void m2Tick(void)
 {
-
+    USART0Println((int)m2TicksRemained);
+    if(m2TicksRemained == 0)
+        m2StopTick();
+    else
+        m2TicksRemained--;
 }
-
-
 
 
 
@@ -135,9 +133,12 @@ void m2CheckTick(void)
 
 int main(void)
 {
-    DDRD = 0xFF;
     //start USART at standart speed
     USART0Begin(USART_SPD);
+    
+    DDRB = 0xFF;
+    DDRD = 0xFF;
+    DDRC = 0xFF;
     USART0Println("STARTED");
     //
     // //set direction pins for motors
@@ -150,12 +151,20 @@ int main(void)
     // motor1.setInverted(M1_INVERT);
     // motor2.setInverted(M2_INVERT);
 
-    m0BeginTick();
-    m1BeginTick();
+    // m1BeginTick();
+    // m2BeginTick();
+    
+    PORTC = (0 << PC2) | (1 << PC3) | (1 << PC4) | (1 << PC5);
+    
+    // m0TicksRemained = 1000;
+    // m0BeginTick();
+    // // 
+    // 
+    // m1TicksRemained = 1000;
+    // m1BeginTick();
+    // 
+    m2TicksRemained = 1000;
     m2BeginTick();
-    m3BeginTick();
-
-
     // const int del = 40;
     loop:
     //
@@ -176,7 +185,14 @@ int main(void)
     // PORTD = 0;
     // _delay_us(del);
     // PORTD = 0xFF;
-
+    
+    // PORTB = ~PORTB;
+    // PORTB = (1 << PB1);
+    // // delay(1);
+    // _delay_us(70);
+    // PORTB = 0;
+    // // delay(1);
+    // _delay_us(70);
     goto loop;//because "true" cycles is for plebs
     return 0;
 }
@@ -192,71 +208,3 @@ int main(void)
 
 
 
-
-Motor::Motor(uint16_t ticksPerCycle, uint8_t dpin, uint8_t spin, void (*func)(void))
-{
-    setTicksPerCycle(ticksPerCycle);
-    setDpin(dpin);
-    setSpin(spin);
-    setTickingFunc(func);
-}
-
-void Motor::beginMoving(uint64_t ticks, DIR_TYPE dir)
-{
-    paused = 0;
-    setDir(dir);
-    ticksRemained = ticks;
-    begin();
-}
-
-void Motor::pause(void)
-{
-    paused = 0;
-}
-
-void Motor::unpause(void)
-{
-    paused = 1;
-    begin();
-}
-
-void Motor::stop(void)
-{
-    ticksRemained = 0;
-}
-
-void Motor::setDir(DIR_TYPE dir)
-{
-    digitalWrite(dpin, inverted?dir : !dir);
-}
-
-DIR_TYPE Motor::getDir(void)
-{
-    return digitalRead(dpin);
-}
-
-void Motor::setDpin(uint8_t pin)
-{
-    dpin = pin;
-    pinMode(pin,OUTPUT);
-}
-
-void Motor::setSpin(uint8_t pin)
-{
-    spin = pin;
-}
-
-void Motor::setTicksPerCycle(uint16_t ticks)
-{
-    ticksPerCycle = ticks;
-}
-
-void Motor::setTickingFunc(void (*func)(void))
-{
-    startTicking = func;
-}
-
-void Motor::setInverted(uint8_t state)
-{
-    inverted = state;
-}
