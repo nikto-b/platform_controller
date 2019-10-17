@@ -35,12 +35,12 @@ uint8_t     m0Paused        = 0,
 uint8_t     m0Dir           = 0,
             m1Dir           = 0,
             m2Dir           = 0;
-uint8_t     m0Spd           = 18,
-            m1Spd           = 18,
-            m2Spd           = 18;
-uint8_t     m0Prescaller    = TIMER2_CLK_SRC_1024,
-            m1Prescaller    = TIMER0_CLK_SRC_1024,
-            m2Prescaller    = TIMER1_CLK_SRC_1024;
+uint8_t     m0Spd           = 40,
+            m1Spd           = 40,
+            m2Spd           = 40;
+uint8_t     m0Prescaller    = TIMER2_CLK_SRC_256,
+            m1Prescaller    = TIMER0_CLK_SRC_256,
+            m2Prescaller    = TIMER1_CLK_SRC_256;
             
 
 
@@ -102,14 +102,22 @@ void m1Tick(void)
 
 
 
+// uint64_t time = 0;
+// uint64_t counted = 0;
 void m2BeginTick(void)
 {
     cli();
-                                //FPWM because fuck you Atmel!
-    TIMER1Init(TIMER1_COMA_TOGGLE, TIMER1_WF_FPWM_TOPOCR1A, m2Prescaller);
+    // TIMER1Init(TIMER1_COMA_TOGGLE, TIMER1_WF_FPWM_TOPOCR1A, m2Prescaller);
+    TIMER1Init(TIMER1_COMA_TOGGLE, TIMER1_WF_CTC_TOPOCR1A, m2Prescaller);
+    // // TIMER1SetA((m2Spd * 65545) / 255);
+    // // TIMER1SetA(100);
+    // OCR1A = 1000;
+    OCR1A = 4;
+    // TCCR1A = (1 << WGM12) | (1 << COM1A0);
+    // TCCR1B = 1 << CS10;
+    // TIMSK1 = 1 << OCIE1A;
     TIMER1EnableCOMPAInterrupt();
     setCustomFunc(INTERRUPT_CUSTOMFUNC_TC1_COMPA, m2Tick);
-    TIMER1SetA((m2Spd * 0xFFFF) / 0xFF);
     sei();
 }
 
@@ -120,11 +128,20 @@ void m2StopTick(void)
 
 void m2Tick(void)
 {
-    USART0Println((int)m2TicksRemained);
+    USART0Println((long)m2TicksRemained);
     if(m2TicksRemained == 0)
         m2StopTick();
     else
         m2TicksRemained--;
+    // USART0Println("A");
+    // time++;
+    // USART0Println((int)time);
+    // if(time >= 15)
+    // {
+    //     USART0Println((long)counted);
+    //     time = 0;
+    //     counted = 0;
+    // }
 }
 
 
@@ -133,12 +150,14 @@ void m2Tick(void)
 
 int main(void)
 {
-    //start USART at standart speed
+    // start USART at standart speed
     USART0Begin(USART_SPD);
     
     DDRB = 0xFF;
     DDRD = 0xFF;
     DDRC = 0xFF;
+    USART0Print(">");
+    delay(1000);
     USART0Println("STARTED");
     //
     // //set direction pins for motors
@@ -154,19 +173,38 @@ int main(void)
     // m1BeginTick();
     // m2BeginTick();
     
-    PORTC = (0 << PC2) | (1 << PC3) | (1 << PC4) | (1 << PC5);
+    //put ENA in 0 to enable drivers(why? architecture)
+    //put MS0-3 to 1 to enable max prescaller on drivers
+    PORTC = (0 << PC2) | (0 << PC3) | (0 << PC4) | (0 << PC5);
     
-    // m0TicksRemained = 1000;
-    // m0BeginTick();
+    m0TicksRemained = 100000;
+    m0BeginTick();
     // // 
     // 
-    // m1TicksRemained = 1000;
-    // m1BeginTick();
+    m1TicksRemained = 100000;
+    m1BeginTick();
     // 
-    m2TicksRemained = 1000;
+    m2TicksRemained = 100000;
     m2BeginTick();
+    while(1)
+    {
+        asm("NOP");
+    }
     // const int del = 40;
-    loop:
+    // double a;
+    // while(1)
+    // {
+    //     a = sin(time);
+    //     cli();
+    //     counted++;
+    //     sei();
+    //     asm("NOP");
+    //     // USART0Println("A");
+    // }
+    // loop:
+    // cli();
+    // sei();
+    // a++;
     //
     // // motor0.setDir(CW);
     // // motor1.setDir(CW);
@@ -193,7 +231,7 @@ int main(void)
     // PORTB = 0;
     // // delay(1);
     // _delay_us(70);
-    goto loop;//because "true" cycles is for plebs
+    // goto loop;//because "true" cycles is for plebs
     return 0;
 }
 
