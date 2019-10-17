@@ -108,14 +108,23 @@ void m2BeginTick(void)
 {
     cli();
     // TIMER1Init(TIMER1_COMA_TOGGLE, TIMER1_WF_FPWM_TOPOCR1A, m2Prescaller);
-    TIMER1Init(TIMER1_COMA_TOGGLE, TIMER1_WF_CTC_TOPOCR1A, m2Prescaller);
+    // TIMER1Init(TIMER1_COMA_TOGGLE, TIMER1_WF_CTC_TOPOCR1A, m2Prescaller);
     // // TIMER1SetA((m2Spd * 65545) / 255);
     // // TIMER1SetA(100);
     // OCR1A = 1000;
-    OCR1A = 4;
+    // OCR1A = 4;
     // TCCR1A = (1 << WGM12) | (1 << COM1A0);
     // TCCR1B = 1 << CS10;
     // TIMSK1 = 1 << OCIE1A;
+
+    TCCR1A = (1 << COM1A0);
+    TCCR1B = (1 << WGM12) | m2Prescaller;
+  
+    // initialize counter
+    TCNT1 = 0;
+  
+    // initialize compare value
+    OCR1A = m2Spd;
     TIMER1EnableCOMPAInterrupt();
     setCustomFunc(INTERRUPT_CUSTOMFUNC_TC1_COMPA, m2Tick);
     sei();
